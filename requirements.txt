@@ -1,16 +1,17 @@
 # Core tooling (first to ensure modern build env)
 playwright==1.45.0
-pandas==2.3.2
 beautifulsoup4==4.12.3
 requests==2.32.3
 gspread==6.1.2
 google-auth==2.32.0
 pytrends==4.9.2
+
+# Build tooling
 pip>=24.2
 setuptools>=70
 wheel>=0.44.0
 
-# Data stack
+# Data stack (consistent, no duplicates)
 numpy==2.1.2
-pandas==2.3.2
-pyarrow==17.0.0  # optional, but common with pandas these days
+pandas==2.2.2
+pyarrow==16.1.1  # optional, but common with pandas these days
