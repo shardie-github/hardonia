@@ -1,7 +1,10 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
-  command = ""  # no build step
+  command = "npm run build"
+
+[functions]
+  node_bundler = "esbuild"
 
 [[headers]]
   for = "/*"
