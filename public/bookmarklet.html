@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Hardonia AdSpy Bookmarklet</title>
+<style>body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#0b0f17;color:#e6eef8;padding:24px}.card{background:#121826;border:1px solid #1f2937;border-radius:14px;padding:18px}</style></head>
+<body><h1>Bookmarklet</h1>
+<p>Enter your Netlify site origin (e.g., <code>https://hardonia.netlify.app</code>) then drag the button to your bookmarks bar.</p>
+<div class="card">
+<input id="origin" placeholder="https://your-site.netlify.app" style="width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#d1e3ff">
+<p><a id="btn" href="#" style="display:inline-block;background:#2563eb;color:white;padding:10px 14px;border-radius:10px;text-decoration:none">Drag me</a></p>
+</div>
+<script>
+const btn=document.getElementById('btn');const origin=document.getElementById('origin');
+function update(){const base=(origin.value||'').replace(/\\/+$/,'');const js=`javascript:(()=>{const url=location.href;fetch('${base}/.netlify/functions/adspy-intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,source:'bookmarklet'})}).then(r=>r.json()).then(x=>alert(x.ok?'✅ Added: '+(x.added||''):('❌ '+(x.error||'Error')))).catch(e=>alert('❌ '+e.message));})();`;btn.href=js;}
+origin.addEventListener('input',update);update();
+</script>
+</body></html>
