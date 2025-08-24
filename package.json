@@ -1,0 +1,13 @@
+{
+  "name": "hardonia",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "googleapis": "^127.0.0"
+  },
+  "scripts": {
+    "build": "echo \"No build needed\""
+  }
+}
