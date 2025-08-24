@@ -1,0 +1,9 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+  command = ""  # no build step
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-store, must-revalidate"
