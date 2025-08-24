@@ -1,0 +1,11 @@
+# Constraints lock down the exact versions to avoid resolver confusion
+
+# Data stack
+numpy==2.1.2
+pandas==2.2.2
+pyarrow==16.1.1
+
+# Build tooling
+pip>=24.2
+setuptools>=70
+wheel>=0.44.0
