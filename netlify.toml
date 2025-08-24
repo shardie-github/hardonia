@@ -10,3 +10,8 @@
   for = "/*"
   [headers.values]
     Cache-Control = "no-store, must-revalidate"
+
+    [build]
+  command = "python -m pip install --upgrade pip setuptools wheel && pip install --only-binary=:all: -r requirements.txt -c constraints.txt && python main.py"
+  publish = "public"   # or your build output folder
+
