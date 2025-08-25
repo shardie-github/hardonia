@@ -1,0 +1,23 @@
+on:
+  schedule:
+    - cron: "0 * * * *"   # hourly UTC
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only continue at 07:40 or 16:40 Toronto
+        id: gate
+        env: { TZ: America/Toronto }
+        run: |
+          now_hm=$(TZ=America/Toronto date +'%H:%M')
+          if [ "$now_hm" = "07:40" ] || [ "$now_hm" = "16:40" ]; then
+            echo "ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "Not target time ($now_hm). Exiting gracefully."
+            echo "ok=false" >> $GITHUB_OUTPUT
+      - name: Exit if not time
+        if: ${{ steps.gate.outputs.ok != 'true' }}
+        run: exit 0
+      # …then paste the same steps from the main workflow…
