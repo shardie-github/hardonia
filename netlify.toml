@@ -1,74 +1,23 @@
-# netlify.toml — Hybrid build (Python + Frontend) + Playwright + SPA + headers
+# netlify.toml (clean, single [build] block)
 
 [build]
-  command = """
-  # --- Python pre-step ---
-  python -m pip install --upgrade pip setuptools wheel && \
-  pip install --only-binary=:all: -r requirements.txt -c constraints.txt && \
-  # (Optional) If greenlet isn't in requirements.txt, install it explicitly:
-  python -m pip install greenlet && \
-  python main.py && \
-
-  # --- Frontend build ---
-  npm ci && \
-  # Install Playwright and Chromium (binaries kept local to repo)
-  npx playwright install chromium && \
-  # If CI image supports it, uncomment to auto-install OS deps (usually OK)
-  # npx playwright install-deps chromium && \
-  npm run build && \
-
-  # --- Ensure single publish dir ---
-  mkdir -p public && [ -d dist ] && cp -R dist/* public/ || true
-  """
+  command = "bash ./netlify-build.sh"
   publish = "public"
-  functions = "netlify/functions"
-
-[build.environment]
-  PYTHON_VERSION = "3.11"
-  # Keep Playwright browser binaries inside the repo for caching between builds
-  PLAYWRIGHT_BROWSERS_PATH = "0"
-  # Optionally pin Node
-  # NODE_VERSION = "20"
 
 [functions]
+  directory = "netlify/functions"
   node_bundler = "esbuild"
-  included_files = [
-    "netlify/functions/**",
-    "requirements.txt",
-    "constraints.txt",
-    # Ship Playwright browser cache so Functions can use it at runtime if needed:
-    ".cache/ms-playwright/**"
-  ]
 
-# ---------- SPA routing ----------
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[build.environment]
+  # Ensure Netlify provisions Python 3.11 (via mise)
+  PYTHON_VERSION = "3.11"
+  PIP_DISABLE_PIP_VERSION_CHECK = "1"
+  PIP_NO_INPUT = "1"
+  # If you want Node Playwright browsers during build, set this to "1" in Netlify UI
+  USE_NODE_PLAYWRIGHT = "0"
+  # If you want Python Playwright browsers during build, set this to "1" in Netlify UI
+  USE_PY_PLAYWRIGHT = "0"
 
-# ---------- Health check ----------
-[[redirects]]
-  from = "/health"
-  to = "/.netlify/functions/health"
-  status = 200
-
-# ---------- Security & performance headers ----------
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Cache-Control = "no-store, must-revalidate"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "SAMEORIGIN"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/images/*"
-  [headers.values]
-    Cache-Control = "public, max-age=2592000"
+# Optional: give Netlify a hint for Python functions runtime (if you add any Python functions)
+[functions."*"]
+  included_files = ["requirements.txt", "constraints.txt"]
