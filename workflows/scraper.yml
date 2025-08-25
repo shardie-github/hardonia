@@ -1,3 +1,108 @@
+name: Hardonia Daily Scraper
+
 on:
   schedule:
-    - cron: "40 7,16 * * *"   # twice daily at 07:40 and 16:40 Toronto
+    # Twice daily at 07:40 and 16:40 America/Toronto (converted to UTC)
+    - cron: "40 11 * * *"   # 07:40 Toronto (EDT/UTC-4)
+    - cron: "40 20 * * *"   # 16:40 Toronto (EDT/UTC-4)
+  workflow_dispatch:
+
+# Least-privilege
+permissions:
+  contents: read
+
+# Prevent overlapping runs on slow networks
+concurrency:
+  group: hardonia-scraper-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TZ_OUTPUT: America/Toronto
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Show time context
+        run: |
+          echo "Now (UTC):      $(date -u)"
+          echo "Now (Toronto):  $(TZ=${TZ_OUTPUT} date)"
+          echo "Workflow:       ${{ github.workflow }} #${{ github.run_number }}"
+
+      - name: Validate required secrets (at least one dump URL)
+        id: validate
+        run: |
+          REQUIRED=0
+          if [ -n "${{ secrets.DUMP_JSON_URL }}" ] || [ -n "${{ secrets.DUMP_CSV_URL }}" ]; then
+            echo "ok=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "::warning::No DUMP_JSON_URL or DUMP_CSV_URL set. Nothing to do."
+          echo "ok=false" >> $GITHUB_OUTPUT
+
+      - name: Create log folder
+        run: mkdir -p out
+
+      # Optional: health check of your Netlify function/site
+      - name: Health check
+        if: ${{ secrets.HEALTH_URL != '' }}
+        run: |
+          set -e
+          echo "GET ${{ secrets.HEALTH_URL }}" | tee out/health_url.txt
+          curl -fsS -D out/health_headers.txt --retry 3 --retry-delay 5 \
+            -o out/health_body.json "${{ secrets.HEALTH_URL }}"
+          jq . out/health_body.json || true
+
+      # Optional: trigger a Netlify build before calling the dump endpoints
+      - name: Trigger Netlify build hook
+        if: ${{ secrets.BUILD_HOOK_URL != '' }}
+        run: |
+          set -e
+          echo "POST ${{ secrets.BUILD_HOOK_URL }}" | tee out/buildhook_url.txt
+          curl -fsS -X POST --retry 3 --retry-delay 5 \
+            -D out/buildhook_headers.txt -o out/buildhook_body.txt \
+            "${{ secrets.BUILD_HOOK_URL }}"
+
+      # Optional: refresh AdSpy cache (JSON feed endpoint)
+      - name: Refresh AdSpy cache
+        if: ${{ secrets.ADSPY_JSON_URL != '' }}
+        run: |
+          set -e
+          echo "GET ${{ secrets.ADSPY_JSON_URL }}" | tee out/adspy_url.txt
+          curl -fsS --retry 3 --retry-delay 5 \
+            -D out/adspy_headers.txt -o out/adspy_body.json \
+            "${{ secrets.ADSPY_JSON_URL }}"
+          jq '.items | length as $n | {items:$n}' out/adspy_body.json || true
+
+      # Dump JSON snapshot to Drive via your Netlify function (report-dump?format=json)
+      - name: Drive dump (JSON)
+        if: ${{ steps.validate.outputs.ok == 'true' && secrets.DUMP_JSON_URL != '' }}
+        run: |
+          set -e
+          echo "GET ${{ secrets.DUMP_JSON_URL }}" | tee out/dump_json_url.txt
+          curl -fsS --retry 3 --retry-delay 5 \
+            -D out/dump_json_headers.txt -o out/dump_json_body.json \
+            "${{ secrets.DUMP_JSON_URL }}"
+          jq '{ok, file, created, note}?' out/dump_json_body.json || true
+
+      # Dump CSV snapshots per tab to Drive (report-dump?format=csv)
+      - name: Drive dump (CSV)
+        if: ${{ steps.validate.outputs.ok == 'true' && secrets.DUMP_CSV_URL != '' }}
+        run: |
+          set -e
+          echo "GET ${{ secrets.DUMP_CSV_URL }}" | tee out/dump_csv_url.txt
+          curl -fsS --retry 3 --retry-delay 5 \
+            -D out/dump_csv_headers.txt -o out/dump_csv_body.json \
+            "${{ secrets.DUMP_CSV_URL }}"
+          jq '{ok, created}' out/dump_csv_body.json || true
+
+      # Always save logs for auditability
+      - name: Upload run logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-logs-${{ github.run_id }}
+          path: out/
+          if-no-files-found: warn
