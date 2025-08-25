@@ -1,19 +1,15 @@
+# netlify.toml (Frontend only; publish = dist)
+
 [build]
-  command = "python -m pip install --upgrade pip setuptools wheel && pip install --only-binary=:all: -r requirements.txt -c constraints.txt && python main.py"
-  publish = "public" # change if your build output lives elsewhere
+  command = "npm ci && npm run build"
+  publish = "dist"
   functions = "netlify/functions"
-  command = "npm run build"
 
 [functions]
   node_bundler = "esbuild"
-  directory = "netlify/functions"
-  included_files = ["requirements.txt", "constraints.txt"]
+  included_files = ["netlify/functions/**"]
 
-[build.environment]
-  PYTHON_VERSION = "3.11"
-
-  [[headers]]
+[[headers]]
   for = "/*"
   [headers.values]
     Cache-Control = "no-store, must-revalidate"
-
