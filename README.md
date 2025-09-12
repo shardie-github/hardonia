@@ -1,18 +1,40 @@
-# Hardonia Intel Scraper — PRO (Free stack)
+# Hardonia Super Super Pack
 
-**Real** daily data for Hardonia from *free* sources:
-- TikTok hashtags: `#tiktokmademebuyit`, `#tiktoktrending`, `#tiktokshop` (Playwright headless)
-- AliExpress cross-reference: top listings for margin calc (mobile site)
-- Google Trends: momentum classification (emerging / trending / declining)
-
-Twice daily via **GitHub Actions** → pushes into your existing **Hardonia Command Center** Google Sheet.
-
-## Secrets to set (GitHub → Settings → Secrets → Actions)
-- `GOOGLE_CREDENTIALS` — full JSON of the Google Service Account
-- `SHEET_ID` — `162Z8RzdC3t9zYo83c3MZ2zxg8mY2btuixmx66UzMiJY` (your sheet)
-- *(optional)* `DRIVE_FOLDER_ID` — if you also want CSV dropped into Drive via Apps Script endpoint
+**Lean, automated, self-improving** repo scaffold. Combines:
+- AutoVendor (push + PR modes)
+- Release asset verification
+- Pack Guardian (policy + secrets + malware)
+- Semantic Version Advisor
+- Release Hygiene
 
 ## Quick start
-1. Create a private repo and upload this folder.
-2. Set the secrets above.
-3. The workflow runs at 07:40 & 16:40 UTC by default. Edit cron in `.github/workflows/daily.yml` if needed.
+1) Commit this repo to GitHub.
+2) Add secrets (as needed): `SLACK_WEBHOOK` for Slack notifications.
+3) Publish a release (e.g., `v1.0.0`) — AutoVendor vendors `/packs/*` automatically.
+
+## Local vendoring
+```bash
+export GITHUB_OWNER=your-org
+export GITHUB_REPO=your-repo
+bash scripts/vendor-packs.sh v1.0.0
+```
+
+## Verify assets
+```bash
+export GITHUB_OWNER=your-org
+export GITHUB_REPO=your-repo
+bash scripts/verify-assets.sh v1.0.0
+```
+
+## Smart add-ons
+- Pack Guardian: `.github/workflows/pack-guardian.yml`
+- Semantic Version Advisor: `.github/workflows/semantic-version-advisor.yml`
+- Release Hygiene: `.github/workflows/release-hygiene.yml`
+
+## Upload and unpack — 3 ways
+1) **Release asset**: attach `Hardonia_Super_Super_Pack.zip` to a Release → it unpacks into the repo automatically.
+2) **Repo upload**: upload any `*.zip` to the `.uploads/` folder in the web UI → it unpacks on push.
+3) **Manual URL**: run the “Unpack Super Pack (Manual URL)” workflow and paste a direct ZIP URL.
+
+## Badges without hardcoding owner/repo
+The `Stamp Badges` workflow replaces `OWNER/REPO` in README with the actual `owner/repo` (`$GITHUB_REPOSITORY`) and commits it.
