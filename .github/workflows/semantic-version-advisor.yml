@@ -1,0 +1,34 @@
+name: Semantic Version Advisor
+on: { schedule: [ { cron: '0 7 * * *' } ], workflow_dispatch: {} }
+permissions: { contents: read, issues: write }
+jobs:
+  advise:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Determine next tag
+        id: advise
+        run: |
+          python3 - <<'PY'
+import subprocess, re
+def sh(c): return subprocess.check_output(c, shell=True, text=True).strip()
+try:
+  last = sh("git describe --tags --abbrev=0")
+except: last = ""
+log = sh(f"git log {last+'..' if last else ''}HEAD --pretty=%s")
+bump = "patch"
+for line in log.splitlines():
+  if re.search(r'BREAKING CHANGE', line): bump="major"; break
+  if re.search(r'^feat', line): bump="minor"
+M=m=p=0
+if last and re.match(r'v\\d+\\.\\d+\\.\\d+', last):
+  M,m,p = map(int, re.findall(r'\\d+', last)[:3])
+if bump=="major": M+=1; m=0; p=0
+elif bump=="minor": m+=1; p=0
+else: p+=1
+print(f"NEXT=v{M}.{m}.{p}")
+PY
+      - name: Open advisory issue
+        uses: dacbd/create-issue-action@v2
+        with: { token: ${{ secrets.GITHUB_TOKEN }}, title: "Version advisor: suggested next tag", body: "See workflow logs for proposed version." }

@@ -1,0 +1,23 @@
+name: Stamp Badges
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ 'README.md' ]
+
+permissions:
+  contents: write
+
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Stamp badges
+        run: |
+          bash scripts/stamp_badges.sh README.md || true
+      - name: Push
+        run: |
+          if git diff --cached --quiet; then echo "No README changes"; else git push; fi

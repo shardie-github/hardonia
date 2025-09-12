@@ -1,0 +1,38 @@
+name: Unpack Super Pack (Manual URL)
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_url:
+        description: 'Direct URL to a zip to unpack into repo root'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  unpack-manual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Configure git
+        run: |
+          git config user.name "hardonia-bot"
+          git config user.email "hardonia-bot@users.noreply.github.com"
+
+      - name: Download zip
+        run: |
+          mkdir -p _import
+          curl -fL "${{ inputs.zip_url }}" -o _import/superpack.zip
+
+      - name: Unpack
+        run: |
+          unzip -q _import/superpack.zip -d _tmp_unpack
+          rsync -a --exclude='.git' _tmp_unpack/ ./
+          rm -rf _import _tmp_unpack
+          git add -A
+          git commit -m "chore: unpack super pack from manual URL" || echo "No changes to commit."
+      - name: Push
+        run: git push

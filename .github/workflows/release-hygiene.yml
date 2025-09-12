@@ -1,0 +1,26 @@
+name: Release Hygiene
+on: { schedule: [ { cron: '0 5 * * 0' } ], workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cleanup
+        env: { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}, REPO: ${{ github.repository }} }
+        run: |
+          set -euo pipefail
+          mapfile -t tags < <(gh release list --repo "$REPO" --limit 200 --json tagName --jq '.[].tagName')
+          keep=()
+          minors=()
+          for t in "${tags[@]}"; do
+            if [[ "$t" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              key="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+              if [[ ! " ${minors[*]} " =~ " $key " ]]; then minors+=("$key"); keep+=("$t"); fi
+            fi
+          done
+          mapfile -t latest10 < <(printf "%s\n" "${tags[@]}" | head -n 10)
+          keep+=("${latest10}" )
+          for t in "${tags[@]}"; do
+            if printf "%s\n" "${keep[@]}" | grep -qx "$t"; then continue; fi
+            gh release delete "$t" --repo "$REPO" -y || true
+          done

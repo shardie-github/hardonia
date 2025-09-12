@@ -1,0 +1,53 @@
+name: Pack Guardian
+on:
+  release: { types: [published] }
+  workflow_dispatch: { inputs: { tag: { description: 'Tag', required: true } } }
+permissions: { contents: read, issues: write }
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clamav clamav-daemon zip unzip jq
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sudo bash -s -- -b /usr/local/bin
+          sudo freshclam || true
+      - name: Determine tag
+        id: t
+        run: |
+          echo "tag=${{ github.event.release.tag_name || inputs.tag }}" >> $GITHUB_OUTPUT
+      - name: Download assets
+        env: { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        run: |
+          mkdir -p dist packs_guard
+          gh release download "${{ steps.t.outputs.tag }}" -R "${{ github.repository }}" -D dist
+      - name: Unzip packs
+        run: |
+          unzip -q dist/RepoUpgradePack.zip -d packs_guard/RepoUpgradePack
+          unzip -q dist/Hardonia_Intel_Suite.zip -d packs_guard/Hardonia_Intel_Suite
+          unzip -q dist/AdSystem_Phase_II_1.zip -d packs_guard/AdSystem_Phase_II_1
+          unzip -q dist/MHE_Logging_Reviewer.zip -d packs_guard/MHE_Logging_Reviewer
+      - name: Policy checks
+        run: |
+          python3 scripts/pack_guardian/checks.py --packs-root packs_guard --policy scripts/pack_guardian/policy.json --report pack_guardian_report.json
+      - name: Secrets scan
+        continue-on-error: true
+        run: gitleaks detect --source=packs_guard --no-banner --report-format json --report-path gitleaks_report.json || true
+      - name: Virus scan
+        continue-on-error: true
+        run: clamscan -ri packs_guard | tee clamscan_report.txt || true
+      - name: Summarize
+        run: python3 scripts/pack_guardian/summarize.py --guardian pack_guardian_report.json --out SUMMARY.md
+      - uses: actions/upload-artifact@v4
+        with: { name: pack-guardian-${{ steps.t.outputs.tag }}, path: | 
+          SUMMARY.md 
+          pack_guardian_report.json 
+          gitleaks_report.json 
+          clamscan_report.txt }
+      - name: Create issue on failure
+        if: failure()
+        uses: dacbd/create-issue-action@v2
+        with: { token: ${{ secrets.GITHUB_TOKEN }}, title: "Pack Guardian failed for ${{ steps.t.outputs.tag }}", body: "See artifact for details." }

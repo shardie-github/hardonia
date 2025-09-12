@@ -1,0 +1,26 @@
+name: Auto Vendor Packs on Release (Push)
+on:
+  release: { types: [published] }
+permissions: { contents: write }
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Configure git
+        run: |
+          git config user.name "hardonia-bot"
+          git config user.email "hardonia-bot@users.noreply.github.com"
+      - name: Vendor packs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          chmod +x scripts/vendor-packs.sh
+          ./scripts/vendor-packs.sh "$TAG_NAME"
+      - name: Push
+        run: |
+          if git diff --cached --quiet; then echo "No changes"; else git push; fi

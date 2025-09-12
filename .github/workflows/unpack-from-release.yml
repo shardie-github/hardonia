@@ -1,0 +1,52 @@
+name: Unpack Super Pack from Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Configure git
+        run: |
+          git config user.name "hardonia-bot"
+          git config user.email "hardonia-bot@users.noreply.github.com"
+
+      - name: Download the super pack asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p _import
+          # Try canonical name first; fall back to any *Super*Pack*.zip
+          if gh release download "${{ github.event.release.tag_name }}" -R "${{ github.repository }}" -p "Hardonia_Super_Super_Pack.zip" -D _import; then
+            echo "✅ Found Hardonia_Super_Super_Pack.zip"
+          else
+            echo "⚠️ Fallback: grabbing any *Super*Pack*.zip"
+            gh release download "${{ github.event.release.tag_name }}" -R "${{ github.repository }}" -p "*Super*Pack*.zip" -D _import
+          fi
+
+      - name: Unpack to repo
+        run: |
+          set -euo pipefail
+          ls -l _import
+          ZIP="$(ls _import/*.zip | head -n1)"
+          echo "Unzipping $ZIP"
+          # extract to a temp dir to avoid stomping .git and workflows during extraction
+          mkdir -p _unzip
+          unzip -q "$ZIP" -d _unzip
+          # copy everything except .git into repo root
+          rsync -a --exclude='.git' _unzip/ ./
+          # optional: remove the import dir
+          rm -rf _import _unzip
+          git add -A
+          git commit -m "chore: unpack super pack from release ${{ github.event.release.tag_name }}" || echo "No changes to commit."
+
+      - name: Push changes
+        run: git push

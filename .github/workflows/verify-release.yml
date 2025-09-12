@@ -1,0 +1,18 @@
+name: Verify Release Assets
+on:
+  workflow_dispatch: { inputs: { tag: { description: 'Tag', required: true } } }
+  schedule: [ { cron: '0 6 * * *' } ]
+permissions: { contents: read }
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          TAG_NAME: ${{ inputs.tag || 'latest' }}
+        run: |
+          bash scripts/verify-assets.sh "$TAG_NAME"

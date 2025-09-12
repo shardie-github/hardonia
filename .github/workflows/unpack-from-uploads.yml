@@ -1,0 +1,35 @@
+name: Unpack Super Pack from Uploads
+
+on:
+  push:
+    paths:
+      - '.uploads/*.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  unpack-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Configure git
+        run: |
+          git config user.name "hardonia-bot"
+          git config user.email "hardonia-bot@users.noreply.github.com"
+
+      - name: Find latest uploaded zip
+        run: |
+          mkdir -p _unzip
+          LATEST="$(ls -t .uploads/*.zip | head -n1)"
+          echo "Latest zip: $LATEST"
+          unzip -q "$LATEST" -d _unzip
+          rsync -a --exclude='.git' _unzip/ ./
+          rm -rf _unzip
+          git add -A
+          git commit -m "chore: unpack super pack from upload $(basename "$LATEST")" || echo "No changes to commit."
+
+      - name: Push changes
+        run: git push
